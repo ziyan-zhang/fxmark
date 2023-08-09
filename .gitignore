@@ -13,3 +13,5 @@ bin/fxmark
 bin/root
 bin/.tmp
 logs/
+.idea/
+.vscode/
