@@ -24,7 +24,7 @@ def catch_ctrl_C(sig, frame):
 
 class Runner(object):
     # media path
-    LOOPDEV = "/dev/loop20"
+    LOOPDEV = "/dev/loop21"
     NVMEDEV = "/dev/nvme0n1pX"
     HDDDEV  = "/dev/sdX"
     SSDDEV  = "/dev/sdc"
@@ -49,7 +49,6 @@ class Runner(object):
         self.DURATION      = 30 # seconds
         self.DIRECTIOS     = ["bufferedio", "directio"]  # enable directio except tmpfs -> nodirectio 
         self.MEDIA_TYPES   = ["ssd", "hdd", "nvme", "mem"]
-#        self.FS_TYPES      = [
         self.FS_TYPES      = ["tmpfs",
                               "ext4", "ext4_no_jnl",
                               "xfs",
@@ -368,7 +367,7 @@ class Runner(object):
             return False
         return True
 
-    def mount(self, media, fs, mnt_path):
+    def mount(self, media, fs, mnt_path):   # 找到挂载方法后重新挂载磁盘
         mount_fn = self.HOWTO_MOUNT.get(fs, None)
         if not mount_fn:
             return False;
@@ -378,13 +377,12 @@ class Runner(object):
         return mount_fn(media, fs, mnt_path)
 
     def _match_config(self, key1, key2):
-        print(key1)
-        print(key2)
         for (k1, k2) in zip(key1, key2):
             if k1 == "*" or k2 == "*":
                 continue
             if k1 != k2:
                 return False
+        print("matched", key1, key2)
         return True
 
     def gen_config(self):
@@ -484,15 +482,15 @@ def confirm_media_path():
     print("%" * 80)
     print("%% WARNING! WARNING! WARNING! WARNING! WARNING!")
     print("%" * 80)
-    yn = input("All data in %s, %s, %s and %s will be deleted. Is it ok? [Y,N]: "
-            % (Runner.HDDDEV, Runner.SSDDEV, Runner.NVMEDEV, Runner.LOOPDEV))
-    if yn != "Y":
-        print("Please, check Runner.LOOPDEV and Runner.NVMEDEV")
-        exit(1)
-    yn = input("Are you sure? [Y,N]: ")
-    if yn != "Y":
-        print("Please, check Runner.LOOPDEV and Runner.NVMEDEV")
-        exit(1)
+    # yn = input("All data in %s, %s, %s and %s will be deleted. Is it ok? [Y,N]: "
+    #         % (Runner.HDDDEV, Runner.SSDDEV, Runner.NVMEDEV, Runner.LOOPDEV))
+    # if yn != "Y":
+    #     print("Please, check Runner.LOOPDEV and Runner.NVMEDEV")
+    #     exit(1)
+    # yn = input("Are you sure? [Y,N]: ")
+    # if yn != "Y":
+    #     print("Please, check Runner.LOOPDEV and Runner.NVMEDEV")
+    #     exit(1)
     print("%" * 80)
     print("\n\n")
 
@@ -519,7 +517,7 @@ if __name__ == "__main__":
     run_config = [
         (Runner.CORE_FINE_GRAIN,
          PerfMon.LEVEL_LOW,
-         ("ssd", "ext4", "DWOL", "5", "bufferedio")),
+         ("ssd", "ext4", "DWOL", "*", "bufferedio")),
         # ("mem", "tmpfs", "filebench_varmail", "32", "directio")),
         # (Runner.CORE_COARSE_GRAIN,
         #  PerfMon.LEVEL_PERF_RECORD,
