@@ -24,10 +24,10 @@ def catch_ctrl_C(sig, frame):
 
 class Runner(object):
     # media path
-    LOOPDEV = "/dev/loopX"
+    LOOPDEV = "/dev/loop20"
     NVMEDEV = "/dev/nvme0n1pX"
     HDDDEV  = "/dev/sdX"
-    SSDDEV  = "/dev/sdY"
+    SSDDEV  = "/dev/sdc"
 
     # test core granularity
     CORE_FINE_GRAIN   = 0
@@ -378,6 +378,8 @@ class Runner(object):
         return mount_fn(media, fs, mnt_path)
 
     def _match_config(self, key1, key2):
+        print(key1)
+        print(key2)
         for (k1, k2) in zip(key1, key2):
             if k1 == "*" or k2 == "*":
                 continue
@@ -517,7 +519,7 @@ if __name__ == "__main__":
     run_config = [
         (Runner.CORE_FINE_GRAIN,
          PerfMon.LEVEL_LOW,
-         ("mem", "*", "DWOL", "80", "directio")),
+         ("ssd", "ext4", "DWOL", "5", "bufferedio")),
         # ("mem", "tmpfs", "filebench_varmail", "32", "directio")),
         # (Runner.CORE_COARSE_GRAIN,
         #  PerfMon.LEVEL_PERF_RECORD,
