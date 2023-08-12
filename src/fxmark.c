@@ -102,6 +102,7 @@ static struct bench_operations *find_ops(char *type)
 	return NULL;
 }
 
+// 解析命令行参数并将解析后的参数存在cmd_opt结构体中
 static int parse_option(int argc, char *argv[], struct cmd_opt *opt)
 {
 	static struct option options[] = {
@@ -168,7 +169,7 @@ static int parse_option(int argc, char *argv[], struct cmd_opt *opt)
 	return arg_cnt;
 }
 
-static void usage(FILE *out)
+static void usage(FILE *out)	// 打印基准测试的使用方法和命令行选项
 {
 	extern const char *__progname;
 	struct bench_desc *bd = bench_table; 
@@ -188,6 +189,7 @@ static void usage(FILE *out)
 	fprintf(out, "  --proflog   = profiling log file\n");
 }
 
+// 根据opt初始化基准测试结构体bench
 static void init_bench(struct bench *bench, struct cmd_opt *opt)
 {
 	struct fx_opt *fx_opt = fx_opt_bench(bench);
@@ -201,7 +203,7 @@ static void init_bench(struct bench *bench, struct cmd_opt *opt)
 	strncpy(bench->profile_stat_file,
 		opt->profile_stat_file, PATH_MAX);
 	strncpy(fx_opt->root, opt->root, PATH_MAX);
-	bench->ops = *opt->ops;
+	bench->ops = *opt->ops;		// cm_opt里面包含了bench的操作函数bench_operations
 }
 
 int main(int argc, char *argv[])

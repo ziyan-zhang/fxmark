@@ -27,6 +27,7 @@ static inline void nop_pause(void)
         __asm __volatile("pause");
 }
 
+// 确保在写入内存之前，所有之前的写入都已完成
 static inline void wmb(void)
 {
         __asm__ __volatile__("sfence":::"memory");
@@ -40,6 +41,7 @@ static int setaffinity(int c)
         return sched_setaffinity(0, sizeof(cpuset), &cpuset);
 }
 
+// 分配基准测试所需的共享内存，并初始化基准测试结构体和共享内存结构体
 struct bench *alloc_bench(int ncpu, int nbg)
 {
         struct bench *bench; 
@@ -75,9 +77,11 @@ static void sighandler(int x)
         running_bench->stop = 1;
 }
 
+// 忽略编译器的警告信息
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-result"
 
+// 每个工作线程的入口函数用于执行基准测试的具体工作
 static void worker_main(void *arg)
 {
         struct worker *worker = (struct worker*)arg;
@@ -87,7 +91,7 @@ static void worker_main(void *arg)
         int err = 0;
 
         /* set affinity */ 
-        setaffinity(worker->id);
+        setaffinity(worker->id);        // 将当前线程绑定到指定的CPU核心上
 
         /* pre-work */
         if (bench->ops.pre_work) {
@@ -156,6 +160,7 @@ err_out:
         worker->clocks = e_clk - s_clk;
 }
 
+// 等待所有工作线程开始执行基准测试
 static void wait(struct bench *bench)
 {
         int i;
@@ -166,6 +171,7 @@ static void wait(struct bench *bench)
         }
 }
 
+// 运行基准测试：fork出多个线程，并等待线程执行完毕
 void run_bench(struct bench *bench)
 {
         int i;
@@ -183,8 +189,8 @@ void run_bench(struct bench *bench)
 			exit(0);
 		}
 	}
-	worker_main(&bench->workers[0]);
-	wait(bench);
+	worker_main(&bench->workers[0]);        // 在当前进程中执行基准测试
+	wait(bench);    // 等待所有工作线程执行完毕
 }
 
 void report_bench(struct bench *bench, FILE *out)
@@ -213,6 +219,8 @@ void report_bench(struct bench *bench, FILE *out)
         avg_secs = (double)total_usecs/(double)n_fg_cpu/1000000.0;
 
 	/* get profiling result */ 
+        // 从文件bench->profile_stat_file中拿到性能分析数据的名称和值，
+        // 存储在profile_name和profile_data中
 	profile_name = profile_data = empty_str;
 	if (bench->profile_stat_file[0]) {
 		FILE *fp = fopen(bench->profile_stat_file, "r");

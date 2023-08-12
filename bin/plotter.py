@@ -211,7 +211,7 @@ class Plotter(object):
         self.out.close()
         self._gen_pdf(self.out_file)
 
-    def plot_util(self, ncore, out_dir):
+    def plot_util(self, ncore, out_dir):    # ncore是固定的
         self.out_dir  = out_dir
         subprocess.call("mkdir -p %s" % self.out_dir, shell=True)
         self.out_file = os.path.join(self.out_dir, ("util.%s.gp" % ncore))

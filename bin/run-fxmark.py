@@ -9,6 +9,9 @@ import pdb
 from os.path import join
 from perfmon import PerfMon
 
+import warnings
+warnings.filterwarnings("ignore", category=SyntaxWarning)
+
 CUR_DIR = os.path.abspath(os.path.dirname(__file__))
 
 try:
@@ -24,8 +27,8 @@ def catch_ctrl_C(sig, frame):
 
 class Runner(object):
     # media path
-    LOOPDEV = "/dev/loop21"
-    NVMEDEV = "/dev/nvme0n1pX"
+    LOOPDEV = "/dev/loop100"
+    NVMEDEV = "/dev/nvme0n1p1"
     HDDDEV  = "/dev/sdX"
     SSDDEV  = "/dev/sdc"
 
@@ -46,7 +49,7 @@ class Runner(object):
 
         # bench config
         self.DISK_SIZE     = "32G"
-        self.DURATION      = 30 # seconds
+        self.DURATION      = 30 # seconds, 原本是30,我改成了5,为了调式
         self.DIRECTIOS     = ["bufferedio", "directio"]  # enable directio except tmpfs -> nodirectio 
         self.MEDIA_TYPES   = ["ssd", "hdd", "nvme", "mem"]
         self.FS_TYPES      = ["tmpfs",
@@ -117,6 +120,7 @@ class Runner(object):
             "f2fs":self.mount_anyfs,
             "jfs":self.mount_anyfs,
             "reiserfs":self.mount_anyfs,
+            "ext4mj":self.mount_ext4mj,
         }
         self.HOWTO_MKFS = {
             "ext2":"-F",
@@ -129,7 +133,7 @@ class Runner(object):
             "reiserfs":"-q",
         }
 
-        # media config
+        # media config，只是用来判断设备是否存在
         self.HOWTO_INIT_MEDIA = {
             "mem":self.init_mem_disk,
             "nvme":self.init_nvme_disk,
@@ -165,7 +169,7 @@ class Runner(object):
         self.umount_hook = []
         self.active_ncore = -1
 
-    def log_start(self):
+    def log_start(self):    # log配置信息，磁盘大小，测多久，是否DIRECTIO等
         self.log_dir = os.path.normpath(
             os.path.join(CUR_DIR, self.LOGD_NAME,
                          str(datetime.datetime.now()).replace(' ','-').replace(':','-')))
@@ -194,14 +198,14 @@ class Runner(object):
         self.log("### SMT_LEVEL      = %s" % cpupol.SMT_LEVEL)
         self.log("\n")
 
-    def log_end(self):
+    def log_end(self):  # 关闭log文件的句柄log_fd
         self.log_fd.close()
 
-    def log(self, log):
+    def log(self, log): # 将日志写入log文件并打印
         self.log_fd.write((log+'\n').encode('utf-8'))
         print(log)
 
-    def get_ncores(self):
+    def get_ncores(self):   # 产生需要测试的ncores的数目
         hw_thr_cnts_map = {
             Runner.CORE_FINE_GRAIN:cpupol.test_hw_thr_cnts_fine_grain,
             Runner.CORE_COARSE_GRAIN:cpupol.test_hw_thr_cnts_coarse_grain,
@@ -215,15 +219,15 @@ class Runner(object):
             ncores.append(n)
         return ncores
 
-    def exec_cmd(self, cmd, out=None):
+    def exec_cmd(self, cmd, out=None):  # 开子进程执行cmd语句
         p = subprocess.Popen(cmd, shell=True, stdout=out, stderr=out)
-        p.wait()
+        p.wait()    # 等待子进程结束，并返回状态码
         return p
 
     def keep_sudo(self):
         self.exec_cmd("sudo -v", self.dev_null)
 
-    def drop_caches(self):
+    def drop_caches(self):  # 调用bin/drop-caches清空缓存，以便进行性能测试
         cmd = ' '.join(["sudo", 
                         os.path.normpath(
                             os.path.join(CUR_DIR, "drop-caches"))])
@@ -243,7 +247,7 @@ class Runner(object):
                         ncores])
         self.exec_cmd(cmd, self.dev_null)
 
-    def add_bg_worker_if_needed(self, bench, ncore):
+    def add_bg_worker_if_needed(self, bench, ncore): # 根据bench名称来判断是否需要添加一个后台工作线程
         if bench.endswith(self.BENCH_BG_SFX):
             ncore = min(ncore + 1, self.nhwthr)
             return (ncore, 1)
@@ -276,13 +280,15 @@ class Runner(object):
         (umount_hook, self.umount_hook) = (self.umount_hook, [])
         map(lambda hook: hook(), umount_hook);
 
-    def init_mem_disk(self):
+    def init_mem_disk(self):    # 初始化内存和磁盘，并将磁盘挂载到指定的挂载点上
         self.unset_loopdev()
         self.umount(self.tmp_path)
         self.unset_loopdev()
         self.exec_cmd("mkdir -p " + self.tmp_path, self.dev_null)
+        # 首先self.disk_path指定了个文件系统
         if not self.mount_tmpfs("mem", "tmpfs", self.tmp_path):
             return False;
+        # 其次，tempfs还需要对应的磁盘新建一个文件，并做成loop设备就是磁盘了
         self.exec_cmd("dd if=/dev/zero of=" 
                       + self.disk_path +  " bs=1G count=1024000",
                       self.dev_null)
@@ -306,7 +312,7 @@ class Runner(object):
     def init_hdd_disk(self):
         return (os.path.exists(Runner.HDDDEV), Runner.HDDDEV)
 
-    def init_media(self, media):
+    def init_media(self, media):    # init media就是init四种disk
         _init_media = self.HOWTO_INIT_MEDIA.get(media, None)
         if not _init_media:
             return (False, None)
@@ -319,7 +325,7 @@ class Runner(object):
                           self.dev_null)
         return p.returncode == 0
 
-    def mount_anyfs(self, media, fs, mnt_path):
+    def mount_anyfs(self, media, fs, mnt_path): # 分成了三步：格式化、挂载、改权限
         (rc, dev_path) = self.init_media(media)
         if not rc:
             return False
@@ -335,6 +341,30 @@ class Runner(object):
                           self.dev_null)
         if p.returncode is not 0:
             return False
+        p = self.exec_cmd("sudo chmod 777 " + mnt_path,
+                          self.dev_null)
+        if p.returncode is not 0:
+            return False
+        return True
+
+    def mount_ext4mj(self, media, fs, mnt_path): # 分成了三步：格式化、挂载、改权限
+        (rc, dev_path) = self.init_media(media)
+        if not rc:
+            return False
+
+        p1_format = self.exec_cmd("sudo ./e2fsprog-zj/mke2fs -t ext4 -J multi_journal -F -G 1 /dev/nvme0n1p1", 
+            self.dev_null)
+        if p1_format.returncode is not 0:
+            return False
+
+        p2_tune = self.exec_cmd("sudo ./e2fsprog-zj/tune2fs -o journal_data /dev/nvme0n1p1", self.dev_null)
+        if p2_tune.returncode is not 0:
+            return False
+
+        p3_mount = self.exec_cmd("sudo mount -t ext4mj /dev/nvme0n1p1 /mnt/nvme0n1p1", self.dev_null)
+        if p3_mount.returncode is not 0:
+            return False
+
         p = self.exec_cmd("sudo chmod 777 " + mnt_path,
                           self.dev_null)
         if p.returncode is not 0:
@@ -367,7 +397,7 @@ class Runner(object):
             return False
         return True
 
-    def mount(self, media, fs, mnt_path):   # 找到挂载方法后重新挂载磁盘
+    def mount(self, media, fs, mnt_path):   # 找到挂载方法后 _重新_ 挂载磁盘
         mount_fn = self.HOWTO_MOUNT.get(fs, None)
         if not mount_fn:
             return False;
@@ -382,10 +412,10 @@ class Runner(object):
                 continue
             if k1 != k2:
                 return False
-        print("matched", key1, key2)
+        print("匹配到了：", key1, key2)
         return True
 
-    def gen_config(self):
+    def gen_config(self):   # 根据run_config参数生成配置
         for ncore in sorted(self.ncores, reverse=True):
             for bench in self.BENCH_TYPES:
                 for media in self.MEDIA_TYPES:
@@ -406,12 +436,12 @@ class Runner(object):
                         "PERFMON_LFILE=%s" % self.perfmon_log])
         return env
 
-    def get_bin_type(self, bench):
+    def get_bin_type(self, bench):  # 根据bench的名字，找到对应的bin和type
         if bench.startswith("filebench_"):
             return (self.filebench_path, bench[len("filebench_"):])
         if bench.startswith("dbench_"):
             return (self.dbench_path, bench[len("dbench_"):])
-        return (self.fxmark_path, bench)
+        return (self.fxmark_path, bench)    # bin对应fxmark, bench对应type
 
     def fxmark(self, media, fs, bench, ncore, nfg, nbg, dio):
         self.perfmon_log = os.path.normpath(
@@ -421,7 +451,7 @@ class Runner(object):
         directio = '1' if dio is "directio" else '0'
 
         if directio is '1':
-            if fs is "tmpfs": 
+            if fs is "tmpfs":   # tempfs将文件存在系统内存中，而不是硬盘上，所以其上的directio是无效的
                 print("# INFO: DirectIO under tmpfs disabled by default")
                 directio='0';
             else: 
@@ -439,11 +469,11 @@ class Runner(object):
                         "--profend",   "\"%s\"" % self.perfmon_stop,
                         "--proflog", self.perfmon_log])
         p = self.exec_cmd(cmd, self.redirect)
-        if self.redirect:
+        if self.redirect:   # 重定向到基准输出
             for l in p.stdout.readlines():
                 self.log(l.decode("utf-8").strip())
 
-    def fxmark_cleanup(self):
+    def fxmark_cleanup(self):   # 清理基准测试运行过程中产生的临时文件和性能监控数据
         cmd = ' '.join([self.fxmark_env(),
                         "%s; rm -f %s/*.pm" % (self.perfmon_stop, self.log_dir)])
         self.exec_cmd(cmd)
@@ -467,9 +497,9 @@ class Runner(object):
                     self.log("# Fail to mount %s on %s." % (fs, media))
                     continue
                 self.log("## %s:%s:%s:%s:%s" % (media, fs, bench, nfg, dio))
-                self.pre_work()
+                self.pre_work()     # keep_sudo & drop caches
                 self.fxmark(media, fs, bench, ncore, nfg, nbg, dio)
-                self.post_work()
+                self.post_work()    # keep_sudo
             self.log("### NUM_TEST_CONF  = %d" % (cnt + 1))
         finally:
             signal.signal(signal.SIGINT, catch_ctrl_C)
@@ -517,7 +547,8 @@ if __name__ == "__main__":
     run_config = [
         (Runner.CORE_FINE_GRAIN,
          PerfMon.LEVEL_LOW,
-         ("ssd", "ext4", "DWOL", "*", "bufferedio")),
+         ("nvme", "ext4", "*", "*", "bufferedio")),
+         # media, fs, bench, ncore, directio
         # ("mem", "tmpfs", "filebench_varmail", "32", "directio")),
         # (Runner.CORE_COARSE_GRAIN,
         #  PerfMon.LEVEL_PERF_RECORD,
