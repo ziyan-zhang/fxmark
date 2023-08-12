@@ -547,7 +547,7 @@ if __name__ == "__main__":
     run_config = [
         (Runner.CORE_FINE_GRAIN,
          PerfMon.LEVEL_LOW,
-         ("nvme", "ext4", "*", "*", "bufferedio")),
+         ("nvme", "ext4", "DWOL", "*", "bufferedio")),
          # media, fs, bench, ncore, directio
         # ("mem", "tmpfs", "filebench_varmail", "32", "directio")),
         # (Runner.CORE_COARSE_GRAIN,
