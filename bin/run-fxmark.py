@@ -49,7 +49,7 @@ class Runner(object):
 
         # bench config
         self.DISK_SIZE     = "32G"
-        self.DURATION      = 30 # seconds, 原本是30,我改成了5,为了调式
+        self.DURATION      = 5 # seconds, 原本是30,我改成了5,为了调式
         self.DIRECTIOS     = ["bufferedio", "directio"]  # enable directio except tmpfs -> nodirectio 
         self.MEDIA_TYPES   = ["ssd", "hdd", "nvme", "mem"]
         self.FS_TYPES      = ["tmpfs",
@@ -547,7 +547,7 @@ if __name__ == "__main__":
     run_config = [
         (Runner.CORE_FINE_GRAIN,
          PerfMon.LEVEL_LOW,
-         ("nvme", "ext4", "DWOL", "*", "bufferedio")),
+         ("nvme", "ext4mj", "DWOL", "*", "bufferedio")),
          # media, fs, bench, ncore, directio
         # ("mem", "tmpfs", "filebench_varmail", "32", "directio")),
         # (Runner.CORE_COARSE_GRAIN,
