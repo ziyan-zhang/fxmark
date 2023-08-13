@@ -353,18 +353,18 @@ class Runner(object):
         if not rc:
             return False
 
-        p1_format = self.exec_cmd("sudo ./e2fsprog-zj/mke2fs -t ext4 -J multi_journal -F -G 1 /dev/nvme0n1p1", 
+        p1_format = self.exec_cmd("sudo /home/zy/e2fsprog-zj/misc/mke2fs -t ext4 -J multi_journal -F -G 1 /dev/nvme0n1p1", 
             self.dev_null)
         print("p1_format.returncode: ", p1_format.returncode)
         if p1_format.returncode is not 0:
             return False
 
-        p2_tune = self.exec_cmd("sudo ./e2fsprog-zj/tune2fs -o journal_data /dev/nvme0n1p1", self.dev_null)
+        p2_tune = self.exec_cmd("sudo /home/zy/e2fsprog-zj/misc/tune2fs -o journal_data /dev/nvme0n1p1", self.dev_null)
         print("p2_tune.returncode: ", p2_tune.returncode)
         if p2_tune.returncode is not 0:
             return False
 
-        p3_mount = self.exec_cmd("sudo mount -t ext4mj /dev/nvme0n1p1 /mnt/nvme0n1p1", self.dev_null)
+        p3_mount = self.exec_cmd("sudo mount -t ext4mj /dev/nvme0n1p1 /home/zy/ext4mj_dir", self.dev_null)
         print("p3_mount.returncode: ", p3_mount.returncode)
         if p3_mount.returncode is not 0:
             return False
