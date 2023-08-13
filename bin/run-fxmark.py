@@ -55,7 +55,7 @@ class Runner(object):
         self.FS_TYPES      = ["tmpfs",
                               "ext4", "ext4_no_jnl",
                               "xfs",
-                              "btrfs", "f2fs",
+                              "btrfs", "f2fs", "ext4mj",
                               # "jfs", "reiserfs", "ext2", "ext3",
         ]
         self.BENCH_TYPES   = [
