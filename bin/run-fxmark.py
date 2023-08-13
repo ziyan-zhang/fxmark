@@ -348,20 +348,24 @@ class Runner(object):
         return True
 
     def mount_ext4mj(self, media, fs, mnt_path): # 分成了三步：格式化、挂载、改权限
+        print("mount_ext4mj")
         (rc, dev_path) = self.init_media(media)
         if not rc:
             return False
 
         p1_format = self.exec_cmd("sudo ./e2fsprog-zj/mke2fs -t ext4 -J multi_journal -F -G 1 /dev/nvme0n1p1", 
             self.dev_null)
+        print("p1_format.returncode: ", p1_format.returncode)
         if p1_format.returncode is not 0:
             return False
 
         p2_tune = self.exec_cmd("sudo ./e2fsprog-zj/tune2fs -o journal_data /dev/nvme0n1p1", self.dev_null)
+        print("p2_tune.returncode: ", p2_tune.returncode)
         if p2_tune.returncode is not 0:
             return False
 
         p3_mount = self.exec_cmd("sudo mount -t ext4mj /dev/nvme0n1p1 /mnt/nvme0n1p1", self.dev_null)
+        print("p3_mount.returncode: ", p3_mount.returncode)
         if p3_mount.returncode is not 0:
             return False
 
