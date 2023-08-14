@@ -1,3 +1,4 @@
+github下载老是卡,在gitee里面更新
 # FxMark: Filesystem Multicore Scalability Benchmark
 We analyze the manycore scalability of five widelydeployed file systems, namely, ext4, XFS, btrfs, F2FS, and tmpfs, by using our open source benchmark suite, FXMARK. FXMARK implements 19 microbenchmarks to stress specific components of each file system and includes three application benchmarks to measure the macroscopic scalability behavior. We observe that file systems are hidden scalability bottlenecks in many I/Ointensive applications even when there is no apparent contention at the application level.
 
